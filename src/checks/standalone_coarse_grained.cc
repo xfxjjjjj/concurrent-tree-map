@@ -4,12 +4,12 @@
 
 namespace check_coarse_grained {
 
-    void Placeholder();
+void Placeholder();
 
-    void Placeholder() {
-        TreeMapCoarseGrained hm{};
-        hm.put(1, 1);
-        (void)hm.get(1);
-    }
+void Placeholder() {
+  TreeMapCoarseGrained hm{};
+  hm.put(1, 1);
+  (void)hm.get(1);
+}
 
 }  // namespace check_coarse_grained
