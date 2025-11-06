@@ -7,7 +7,7 @@ namespace benchmark {
     // --- Global Helper Function Definitions ---
 
     // Definition of the key serialization function
-    ByteArray create_key(size_t id) {
+    ByteArray create_key(const size_t id) {
         // Ensure we don't try to copy more bytes than the key size
         constexpr size_t bytes_to_copy = std::min(sizeof(id), KEY_SIZE);
 
@@ -24,12 +24,9 @@ namespace benchmark {
         return key;
     }
 
-    // --- ThreadBody Function Definition ---
-
-    // Implementation of the thread's mixed workload logic
-    void ThreadBody(TreeMapBase& tree_map,
-                    size_t num_operations,
-                    double put_ratio,
+    void ThreadBody(TreeMapBase& tree_map, // Changed from TreeMapBase<K,V> to the non-templated base class
+                    size_t num_operations, // Total operations per thread
+                    double put_ratio,        // Ratio of PUTs (e.g., 0.3 for 30% puts, 70% gets)
                     size_t thread_id,
                     ThreadStats& stats) {
 
@@ -42,16 +39,17 @@ namespace benchmark {
         std::uniform_int_distribution<size_t> key_dist(0, MAX_KEY - 1);
 
         for (size_t i = 0; i < num_operations; ++i) {
-            size_t key_id = key_dist(gen);
-            ByteArray key = create_key(key_id);
-            ByteArray value = create_key(key_id);
+            const size_t key_id = key_dist(gen);
+            const ByteArray key = create_key(key_id);
+            const ByteArray value = create_key(key_id);
 
+            // Decide between PUT and GET
             if (op_dist(gen) < put_ratio) {
-                // PUT Operation
+                // --- PUT Operation (Write) ---
                 tree_map.put(key, value);
-                stats.puts_performed++;
+                stats.puts_performed++; // Track total puts (which is used to estimate size)
             } else {
-                // GET Operation
+                // --- GET Operation (Read) ---
                 std::optional<ByteArray> result = tree_map.get(key);
                 stats.gets_performed++;
                 if (result.has_value()) {

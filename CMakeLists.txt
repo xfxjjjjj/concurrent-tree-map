@@ -41,19 +41,29 @@ add_library(checks STATIC
         src/tree_map_base.h
         src/benchmark.h
         src/tree_map_coarse_grained.h
-        src/benchmark.cc)
+        src/benchmark.cc
+        src/demo_coarse_grained.cpp
+        src/tree_map_coarse_grained.cpp
+        src/tree_map_base.cpp)
 target_include_directories(checks PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
+# Update the function to include the necessary source files.
 function(add_tree_map_demo name)
-    add_executable(demo_${name}
-            src/benchmark.h
-            src/tree_map_base.h
-            src/tree_map_${name}.h
-            src/benchmark.cc)
+    # Define a list of source files required for the demo executable
+    set(DEMO_SOURCES
+            src/tree_map_base.cpp
+            src/benchmark.cc
+            src/tree_map_${name}.cpp  # Source file for the map implementation (put/get)
+            src/demo_${name}.cpp      # Source file containing the main() function
+    )
+
+    add_executable(demo_${name} ${DEMO_SOURCES})
+
     target_include_directories(demo_${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_link_libraries(demo_${name} PRIVATE Threads::Threads)
 endfunction()
 
+# This call now correctly defines the demo_coarse_grained executable
 add_tree_map_demo(coarse_grained)
 
 #add_executable(playground

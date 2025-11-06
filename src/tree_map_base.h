@@ -9,7 +9,7 @@ using ByteArray = std::vector<std::byte>;
 
 class TreeMapBase {
 public:
-    virtual ~TreeMapBase() = default;
+    virtual ~TreeMapBase();
 
     // Adds |key| to the hash set. Returns true if |elem| was absent, and false
     // otherwise.
