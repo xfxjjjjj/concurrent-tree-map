@@ -4,8 +4,28 @@
 #include <cstddef>
 #include <vector>
 #include <optional>
+#include <mutex>
+#include <utility>
 
 using ByteArray = std::vector<std::byte>;
+
+enum Color {RED, BLACK};
+
+struct TreeNode {
+    Color color_ = RED;
+    ByteArray key_;
+    ByteArray value_;
+    std::shared_ptr<TreeNode> left_;
+    std::shared_ptr<TreeNode> right_;
+    std::shared_ptr<TreeNode> parent_;
+
+    explicit TreeNode(ByteArray key, ByteArray value)
+        : key_ {std::move(key)}, value_ {std::move(value)} {}
+};
+
+inline bool is_less(const ByteArray& a, const ByteArray& b) {
+    return std::ranges::lexicographical_compare(a, b);
+}
 
 class TreeMapBase {
 public:

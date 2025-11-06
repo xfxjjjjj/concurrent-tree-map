@@ -6,21 +6,6 @@
 #include <src/tree_map_base.h>
 #include "benchmark.h"
 
-struct TreeNode {
-    ByteArray key_;
-    ByteArray value_;
-    std::shared_ptr<TreeNode> left_;
-    std::shared_ptr<TreeNode> right_;
-    std::shared_ptr<TreeNode> parent_;
-
-    explicit TreeNode(ByteArray key, ByteArray value)
-        : key_ {std::move(key)}, value_ {std::move(value)} {}
-};
-
-inline bool is_less(const ByteArray& a, const ByteArray& b) {
-    return std::ranges::lexicographical_compare(a, b);
-}
-
 class TreeMapCoarseGrained : public TreeMapBase {
 public:
     // ... constructor and members ...
@@ -29,6 +14,9 @@ public:
 private:
     std::mutex mutex_;
     std::shared_ptr<TreeNode> root {nullptr};
+    void left_rotate(std::shared_ptr<TreeNode> x);
+    void right_rotate(std::shared_ptr<TreeNode> y);
+    void rbt_insert_fixup(std::shared_ptr<TreeNode> cur);
 };
 
 #endif //UNTITLED_COARSE_GRAINED_TREE_MAP_H
