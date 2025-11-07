@@ -3,6 +3,11 @@
 #include <src/tree_map_base.h>
 
 #include <mutex>
+#include <iostream>
+#include <thread>       // For logging
+#include <sstream>      // For logging
+
+static std::mutex g_log_mutex;
 
 class TreeMapFineGrained final : public TreeMapBase {
  public:
@@ -20,15 +25,29 @@ class TreeMapFineGrained final : public TreeMapBase {
 
 // Helper function to lock multiple nodes in address order
 inline void lock_nodes(std::vector<std::shared_ptr<TreeNode>>& nodes) {
-  // Sort by address to prevent deadlock
-  std::sort(
-      nodes.begin(), nodes.end(),
-      [](const std::shared_ptr<TreeNode>& a,
-         const std::shared_ptr<TreeNode>& b) { return a.get() < b.get(); });
+  std::sort(nodes.begin(), nodes.end(), [](const auto& a, const auto& b) {
+      return a.get() < b.get();
+  });
+  nodes.erase(std::remove(nodes.begin(), nodes.end(), nullptr), nodes.end());
+  nodes.erase(std::unique(nodes.begin(), nodes.end()), nodes.end());
 
-  // Lock in sorted order
+  {
+    std::scoped_lock<std::mutex> log_lock(g_log_mutex);
+    std::cout << "[TID " << std::this_thread::get_id() << "] Trying to lock " << nodes.size() << " nodes: ";
+    for(auto& n : nodes) std::cout << static_cast<void *>(n.get()) << " ";
+    std::cout << std::endl;
+  }
+
   for (auto& node : nodes) {
-    node->lock_.lock();
+    {
+      std::scoped_lock<std::mutex> log_lock(g_log_mutex);
+      std::cout << "[TID " << std::this_thread::get_id() << "] ...waiting for " << static_cast<void *>(node.get()) << std::endl;
+    }
+    node->lock_.lock(); // Acquire exclusive lock
+    {
+      std::scoped_lock<std::mutex> log_lock(g_log_mutex);
+      std::cout << "[TID " << std::this_thread::get_id() << "] ...acquired " << static_cast<void *>(node.get()) << std::endl;
+    }
   }
 }
 
@@ -36,6 +55,7 @@ inline void lock_nodes(std::vector<std::shared_ptr<TreeNode>>& nodes) {
 inline void unlock_nodes(std::vector<std::shared_ptr<TreeNode>>& nodes) {
   for (auto& node : nodes) {
     node->lock_.unlock();
+    std::cout << "[TID " << std::this_thread::get_id() << "] ...released " << static_cast<void *>(node.get()) << std::endl;
   }
 }
 
