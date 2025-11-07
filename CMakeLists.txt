@@ -44,7 +44,8 @@ add_library(checks STATIC
         src/benchmark.cc
         src/demo_coarse_grained.cpp
         src/tree_map_coarse_grained.cpp
-        src/tree_map_base.cpp)
+        src/tree_map_base.cpp
+        src/demo_fine_grained.cpp)
 target_include_directories(checks PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Update the function to include the necessary source files.
@@ -65,7 +66,7 @@ endfunction()
 
 # This call now correctly defines the demo_coarse_grained executable
 add_tree_map_demo(coarse_grained)
-
+add_tree_map_demo(fine_grained)
 #add_executable(playground
 #        src/hash_set_base.h
 #        src/hash_set_coarse_grained.h
