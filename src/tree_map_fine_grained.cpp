@@ -65,7 +65,6 @@ void TreeMapFineGrained::rbt_insert_fixup(std::shared_ptr<TreeNode> z) {
     std::shared_ptr<TreeNode> current = std::move(z);
 
     while (current != root) {
-        // --- 1. Optimistic (Unlocked) Reads ---
         // These are racy, but we validate after locking.
         std::shared_ptr<TreeNode> parent = current->get_parent();
         if (parent == nullptr || parent->color_ != RED) {
@@ -80,10 +79,9 @@ void TreeMapFineGrained::rbt_insert_fixup(std::shared_ptr<TreeNode> z) {
         std::shared_ptr<TreeNode> uncle = (parent == grandparent->left_) ?
                                         grandparent->right_ : grandparent->left_;
 
-        // --- 2. Case 1: Uncle is RED (Recoloring) ---
         if (uncle != nullptr && uncle->color_ == RED) {
             std::vector<std::shared_ptr<TreeNode>> nodes_to_lock = {parent, grandparent, uncle};
-            // lock_nodes(nodes_to_lock);
+            // lock_nodes(nodes_to_lock); -- this leads to deadlock
 
             // --- State Validation Block ---
             if (parent->get_parent() != grandparent || parent->color_ != RED ||
@@ -102,15 +100,13 @@ void TreeMapFineGrained::rbt_insert_fixup(std::shared_ptr<TreeNode> z) {
             continue; // Continue loop from new 'current'
         }
 
-        // --- 3. Case 2/3: Uncle is BLACK (Rotations) ---
         if (parent == grandparent->left_) {
-            // Case 2: Triangle (Left-Right)
+            // Triangle (Left-Right)
             if (current == parent->right_) {
                 std::vector<std::shared_ptr<TreeNode>> nodes_to_lock = {parent, current, grandparent};
                 if(current->left_ != nullptr) nodes_to_lock.push_back(current->left_);
 
-                // lock_nodes(nodes_to_lock);
-                // (Re-check state here...)
+                // lock_nodes(nodes_to_lock); -- this leads to deadlock
                 if(parent->get_parent() != grandparent || current->get_parent() != parent) {
                     // unlock_nodes(nodes_to_lock);
                     continue; // State changed
@@ -125,7 +121,7 @@ void TreeMapFineGrained::rbt_insert_fixup(std::shared_ptr<TreeNode> z) {
                 if (parent == nullptr) continue; // Restart loop
             }
 
-            // Case 3: Line (Left-Left)
+            // Line (Left-Left)
             std::vector<std::shared_ptr<TreeNode>> nodes_to_lock = {parent, grandparent};
             if(grandparent->get_parent() != nullptr) nodes_to_lock.push_back(grandparent->get_parent());
             if(parent->right_ != nullptr) nodes_to_lock.push_back(parent->right_);
@@ -144,7 +140,7 @@ void TreeMapFineGrained::rbt_insert_fixup(std::shared_ptr<TreeNode> z) {
             // unlock_nodes(nodes_to_lock);
 
         } else {
-            // Case 2: Triangle (Right-Left)
+            // Triangle (Right-Left)
             if (current == parent->left_) {
                 std::vector<std::shared_ptr<TreeNode>> nodes_to_lock = {parent, current, grandparent};
                 if(current->right_ != nullptr) nodes_to_lock.push_back(current->right_);
@@ -165,7 +161,7 @@ void TreeMapFineGrained::rbt_insert_fixup(std::shared_ptr<TreeNode> z) {
                 if (parent == nullptr) continue; // Restart loop
             }
 
-            // Case 3: Line (Right-Right)
+            // Line (Right-Right)
             std::vector<std::shared_ptr<TreeNode>> nodes_to_lock = {parent, grandparent};
             if(grandparent->get_parent() != nullptr) nodes_to_lock.push_back(grandparent->get_parent());
             if(parent->left_ != nullptr) nodes_to_lock.push_back(parent->left_);
