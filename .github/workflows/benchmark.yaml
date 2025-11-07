@@ -19,7 +19,12 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake make
+          sudo apt-get install -y lsb-release wget software-properties-common gnupg
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 18
+          sudo apt-get install -y cmake clang-format-18 libc++-18 libc++-18-dev bash
+          export PATH=$PATH:/usr/lib/llvm-18/bin
 
       - name: Make scripts executable
         run: |
