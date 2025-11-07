@@ -7,74 +7,114 @@ void TreeMapCoarseGrained::left_rotate(std::shared_ptr<TreeNode> x) {
     std::shared_ptr<TreeNode> y = x->right_;
     x->right_ = y->left_;
     if (y->left_ != nullptr)
-        y->left_->parent_ = x;
-    y->parent_ = x->parent_;
-    if (x->parent_ == nullptr)
+        y->left_->parent_ = x;  // weak_ptr assignment
+
+    std::shared_ptr<TreeNode> parent = x->get_parent();
+    y->parent_ = parent;  // weak_ptr assignment
+
+    if (parent == nullptr)
         root = y;
-    else if (x == x->parent_->left_)
-        x->parent_->left_ = y;
+    else if (x == parent->left_)
+        parent->left_ = y;
     else
-        x->parent_->right_ = y;
+        parent->right_ = y;
+
     y->left_ = x;
-    x->parent_ = y;
+    x->parent_ = y;  // weak_ptr assignment
 }
 
 void TreeMapCoarseGrained::right_rotate(std::shared_ptr<TreeNode> y) {
+    if (y == nullptr || y->left_ == nullptr)
+        return;
+
     std::shared_ptr<TreeNode> x = y->left_;
     y->left_ = x->right_;
     if (x->right_ != nullptr)
-        x->right_->parent_ = y;
-    x->parent_ = y->parent_;
-    if (y->parent_ == nullptr)
+        x->right_->parent_ = y;  // weak_ptr assignment
+
+    std::shared_ptr<TreeNode> parent = y->get_parent();
+    x->parent_ = parent;  // weak_ptr assignment
+
+    if (parent == nullptr)
         root = x;
-    else if (y == y->parent_->left_)
-        y->parent_->left_ = x;
+    else if (y == parent->left_)
+        parent->left_ = x;
     else
-        y->parent_->right_ = x;
+        parent->right_ = x;
+
     x->right_ = y;
-    y->parent_ = x;
+    y->parent_ = x;  // weak_ptr assignment
 }
 
 void TreeMapCoarseGrained::rbt_insert_fixup(std::shared_ptr<TreeNode> cur) {
-    while (cur != root && cur->parent_->color_ == RED) {
-        if (cur->parent_ == cur->parent_->parent_->left_) {
-            if (std::shared_ptr<TreeNode> uncle = cur->parent_->parent_->right_;
-                uncle != nullptr && uncle->color_ == RED) {
-                cur->parent_->color_ = BLACK;
+    while (cur != root) {
+        std::shared_ptr<TreeNode> parent = cur->get_parent();
+        if (parent == nullptr || parent->color_ != RED)
+            break;
+
+        std::shared_ptr<TreeNode> grandparent = parent->get_parent();
+        if (grandparent == nullptr)
+            break;
+
+        if (parent == grandparent->left_) {
+            std::shared_ptr<TreeNode> uncle = grandparent->right_;
+
+            if (uncle != nullptr && uncle->color_ == RED) {
+                // Case 1: Uncle is RED - recoloring
+                parent->color_ = BLACK;
                 uncle->color_ = BLACK;
-                cur->parent_->parent_->color_ = RED;
-                cur = cur->parent_->parent_;
+                grandparent->color_ = RED;
+                cur = grandparent;
             } else {
-                if (cur == cur->parent_->right_) {
-                    cur = cur->parent_;
+                // Case 2/3: Uncle is BLACK - rotations needed
+                if (cur == parent->right_) {
+                    // Case 2: Left-right case
+                    cur = parent;
                     left_rotate(cur);
+                    parent = cur->get_parent(); // Update parent after rotation
+                    if (parent == nullptr) break;
                 }
-                cur->parent_->color_ = BLACK;
-                cur->parent_->parent_->color_ = RED;
-                right_rotate(cur->parent_->parent_);
+
+                // Case 3: Left-left case
+                parent->color_ = BLACK;
+                grandparent->color_ = RED;
+                right_rotate(grandparent);
+                break;
             }
         } else {
-            if (std::shared_ptr<TreeNode> uncle = cur->parent_->parent_->left_;
-                uncle != nullptr && uncle->color_ == RED) {
-                cur->parent_->color_ = BLACK;
+            std::shared_ptr<TreeNode> uncle = grandparent->left_;
+
+            if (uncle != nullptr && uncle->color_ == RED) {
+                // Case 1: Uncle is RED - recoloring
+                parent->color_ = BLACK;
                 uncle->color_ = BLACK;
-                cur->parent_->parent_->color_ = RED;
-                cur = cur->parent_->parent_;
+                grandparent->color_ = RED;
+                cur = grandparent;
             } else {
-                if (cur == cur->parent_->left_) {
-                    cur = cur->parent_;
+                // Case 2/3: Uncle is BLACK - rotations needed
+                if (cur == parent->left_) {
+                    // Case 2: Right-left case
+                    cur = parent;
                     right_rotate(cur);
+                    parent = cur->get_parent(); // Update parent after rotation
+                    if (parent == nullptr) break;
                 }
-                cur->parent_->color_ = BLACK;
-                cur->parent_->parent_->color_ = RED;
-                left_rotate(cur->parent_->parent_);
+
+                // Case 3: Right-right case
+                parent->color_ = BLACK;
+                grandparent->color_ = RED;
+                left_rotate(grandparent);
+                break;
             }
         }
     }
-    root->color_ = BLACK;
+
+    // Final Rule: Root must be BLACK.
+    if (root != nullptr) {
+        root->color_ = BLACK;
+    }
 }
 
-// Adds |key| to the hash map.
 void TreeMapCoarseGrained::put(ByteArray key, ByteArray value) {
     auto newNode = std::make_shared<TreeNode>(std::move(key), std::move(value));
     std::shared_ptr<TreeNode> y = nullptr;
@@ -82,38 +122,41 @@ void TreeMapCoarseGrained::put(ByteArray key, ByteArray value) {
     std::scoped_lock<std::mutex> lock(mutex_);
     std::shared_ptr<TreeNode> x = root;
 
+    // Find insertion point
     while (x != nullptr) {
         y = x;
         if (newNode->key_ < x->key_)
             x = x->left_;
-        else
+        else if (newNode->key_ > x->key_)
             x = x->right_;
+        else {
+            // Key already exists - update value
+            x->value_ = std::move(value);
+            return;
+        }
     }
 
-    newNode->parent_ = y;
-    if (y == nullptr)
+    // Insert new node
+    newNode->parent_ = y;  // weak_ptr assignment
+
+    if (y == nullptr) {
         root = newNode;
-    else if (newNode->key_ < y->key_)
+    } else if (newNode->key_ < y->key_) {
         y->left_ = newNode;
-    else if (newNode->key_ > y->key_)
+    } else {
         y->right_ = newNode;
-    else
-        y->value_ = std::move(value);
+    }
 
     rbt_insert_fixup(newNode);
-
 }
 
-
-// Returns true if |key| is present in the hash set, and false otherwise.
 std::optional<ByteArray> TreeMapCoarseGrained::get(const ByteArray& key) {
     std::scoped_lock<std::mutex> lock(mutex_);
     std::shared_ptr<TreeNode> x = root;
 
-
     while (x != nullptr) {
         if (x->key_ == key) {
-            return std::optional {x->value_}; // Key found!
+            return std::optional{x->value_};
         }
 
         if (is_less(key, x->key_)) {
@@ -125,4 +168,3 @@ std::optional<ByteArray> TreeMapCoarseGrained::get(const ByteArray& key) {
 
     return std::nullopt;
 }
-
