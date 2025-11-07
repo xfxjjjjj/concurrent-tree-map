@@ -31,5 +31,8 @@ jobs:
           chmod +x ./scripts/check_build.sh
           chmod +x ./scripts/run_benchmark.sh
 
+      - name: Prepare temp directory
+        run: mkdir -p temp
+
       - name: Run Benchmark
         run: ./scripts/run_benchmark.sh
